@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F4F6FA">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>SV Tracker · DPWH Bureau of Equipment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{
+  --navy:#1F3A68; --navy2:#2C5191; --orange:#F28C28; --orange2:#F7A54E;
+  --bg:#F4F6FA; --card:#FFFFFF; --ink:#16233B; --muted:#6B778C; --line:#E4E9F2;
+  --green:#1E9E6A; --red:#D9463B;
+  --shadow:0 1px 2px rgba(22,35,59,.06),0 8px 24px rgba(22,35,59,.08);
+  --shadow-lg:0 2px 4px rgba(22,35,59,.08),0 18px 40px rgba(22,35,59,.14);
+  --r:18px; --ease:cubic-bezier(.22,.8,.24,1);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:15px}
+body{background-image:radial-gradient(rgba(31,58,104,.07) 1px,transparent 1px);background-size:18px 18px;min-height:100vh;padding-bottom:calc(30px + env(safe-area-inset-bottom))}
+.wrap{max-width:560px;margin:0 auto;padding:14px 14px 0}
+svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* header */
+header{display:flex;align-items:center;gap:12px;padding:6px 2px 14px}
+.logo{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;color:#fff;background:linear-gradient(140deg,var(--navy2),var(--navy));box-shadow:var(--shadow)}
+.logo svg{width:24px;height:24px}
+.brand{min-width:0}.brand h1{white-space:nowrap;margin:0;font:700 26px/1 "Barlow Condensed";letter-spacing:.5px;text-transform:uppercase;color:var(--navy)}
+.brand h1 b{color:var(--orange)}
+.brand p{white-space:nowrap;margin:3px 0 0;font-size:11.5px;color:var(--muted);letter-spacing:.3px;text-transform:uppercase;font-weight:600}
+.hdr-r{margin-left:auto;display:flex;gap:8px;align-items:center}
+.pill{white-space:nowrap;display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:6px 10px;border-radius:999px;background:#fff;box-shadow:var(--shadow);color:var(--muted);transition:all .4s var(--ease)}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--orange)}
+.pill.ok .dot{background:var(--green)} .pill.off .dot{background:var(--red)}
+.iconbtn{width:40px;height:40px;border-radius:12px;border:0;background:#fff;box-shadow:var(--shadow);display:grid;place-items:center;color:var(--navy);cursor:pointer;transition:transform .25s var(--ease)}
+.iconbtn:active{transform:scale(.92)}
+
+/* cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:14px;animation:rise .6s var(--ease) both}
+.card:nth-of-type(2){animation-delay:.05s}.card:nth-of-type(3){animation-delay:.1s}.card:nth-of-type(4){animation-delay:.15s}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.ch{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.tile{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:#fff;box-shadow:0 4px 10px rgba(31,58,104,.25);flex:none}
+.tile svg{width:18px;height:18px}
+.tile.n{background:linear-gradient(140deg,var(--navy2),var(--navy))}
+.tile.o{background:linear-gradient(140deg,var(--orange2),var(--orange));box-shadow:0 4px 10px rgba(242,140,40,.3)}
+.ch h2{margin:0;font:700 19px/1 "Barlow Condensed";text-transform:uppercase;letter-spacing:.4px;color:var(--navy)}
+.ch small{display:block;font-size:12px;color:var(--muted);margin-top:3px;font-weight:500}
+
+/* search + list */
+.search{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:0 12px;transition:border .3s,box-shadow .3s}
+.search:focus-within{border-color:var(--navy2);box-shadow:0 0 0 4px rgba(44,81,145,.12);background:#fff}
+.search input{flex:1;border:0;background:transparent;font:inherit;padding:13px 0;outline:none;color:var(--ink)}
+.search svg{color:var(--muted)}
+.list{margin-top:10px;max-height:0;overflow:auto;transition:max-height .5s var(--ease)}
+.list.open{max-height:300px}
+.item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;cursor:pointer;transition:background .25s}
+.item:hover,.item:active{background:var(--bg)}
+.item .tag{font:700 15px/1 "Barlow Condensed";color:var(--navy);letter-spacing:.3px}
+.item .sub{font-size:12px;color:var(--muted);margin-top:3px}
+.item .st{margin-left:auto;font-size:11px;font-weight:600;padding:4px 8px;border-radius:999px;background:#EAF6F0;color:var(--green)}
+.item .st.w{background:#FFF2E4;color:#B8620F}.item .st.r{background:#FDECEA;color:var(--red)}
+
+.vh{display:none;margin-top:12px;border-radius:16px;padding:14px;color:#fff;background:linear-gradient(140deg,var(--navy2),var(--navy));box-shadow:var(--shadow-lg);position:relative;overflow:hidden}
+.vh.show{display:block;animation:rise .5s var(--ease)}
+.vh::after{content:"";position:absolute;right:-40px;top:-40px;width:150px;height:150px;border-radius:50%;border:1.5px solid rgba(255,255,255,.12)}
+.vh .big{font:700 30px/1 "Barlow Condensed";letter-spacing:.5px}
+.vh .code{font-size:12.5px;opacity:.8;margin-top:4px}
+.vh .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:12px;font-size:12.5px}
+.vh .grid span{display:block;opacity:.65;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px}
+.vh .chg{position:absolute;right:12px;top:12px;background:rgba(255,255,255,.14);border:0;color:#fff;font:600 12px Inter;padding:6px 10px;border-radius:999px;cursor:pointer}
+.vh .last{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.15);font-size:12px;display:flex;gap:8px;align-items:center}
+.vh .last svg{width:16px;height:16px;color:var(--orange2)}
+
+/* map */
+.mapbox{position:relative;border-radius:16px;overflow:hidden;box-shadow:inset 0 0 0 1px var(--line)}
+#map{height:300px;background:#E8EEF6}
+.maptools{position:absolute;right:10px;top:10px;z-index:500;display:flex;flex-direction:column;gap:8px}
+.maptools button{width:38px;height:38px;border-radius:11px;border:0;background:#fff;box-shadow:var(--shadow);color:var(--navy);display:grid;place-items:center;cursor:pointer}
+.maphint{position:absolute;left:10px;right:58px;bottom:10px;z-index:500;background:var(--navy);color:#fff;font-size:12.5px;padding:9px 12px;border-radius:12px;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(10px);transition:all .45s var(--ease);pointer-events:none}
+.maphint.show{opacity:1;transform:none}
+.coords{display:flex;gap:8px;margin-top:10px}
+.coords div{flex:1;background:var(--bg);border-radius:12px;padding:9px 10px}
+.coords span{display:block;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+.coords b{font:700 18px/1.2 "Barlow Condensed";color:var(--navy)}
+
+/* tabs */
+.seg{display:flex;background:var(--bg);border-radius:14px;padding:4px;position:relative;margin-bottom:14px}
+.seg button{flex:1;border:0;background:transparent;font:600 13.5px Inter;color:var(--muted);padding:10px;border-radius:11px;position:relative;z-index:1;cursor:pointer;display:flex;gap:6px;align-items:center;justify-content:center;transition:color .35s}
+.seg button.on{color:var(--navy)}
+.seg .glider{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);background:#fff;border-radius:11px;box-shadow:var(--shadow);transition:transform .45s var(--ease)}
+.pane{display:none}.pane.on{display:block;animation:rise .45s var(--ease)}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt{border:1.5px solid var(--line);background:#fff;border-radius:14px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .35s var(--ease);font:600 13px Inter;color:var(--ink)}
+.opt .tile{margin:0 auto 8px}
+.opt.on{border-color:var(--navy2);box-shadow:0 0 0 4px rgba(44,81,145,.1);transform:translateY(-2px)}
+label.f{display:block;font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:12px 0 6px}
+.in{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:12px;font:inherit;color:var(--ink);outline:none;transition:all .3s}
+.in:focus{border-color:var(--navy2);background:#fff;box-shadow:0 0 0 4px rgba(44,81,145,.1)}
+.btn{width:100%;border:0;border-radius:14px;padding:15px;font:700 15px Inter;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;margin-top:14px;transition:transform .2s var(--ease),opacity .3s,box-shadow .3s}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.n{background:linear-gradient(140deg,var(--navy2),var(--navy));box-shadow:0 8px 20px rgba(31,58,104,.28)}
+.btn.o{background:linear-gradient(140deg,var(--orange2),var(--orange));box-shadow:0 8px 20px rgba(242,140,40,.32)}
+.btn.r{background:linear-gradient(140deg,#E8665C,var(--red));box-shadow:0 8px 20px rgba(217,70,59,.3)}
+.btn.g{background:#fff;color:var(--navy);border:1px solid var(--line);box-shadow:var(--shadow)}
+
+/* trip live */
+.live{display:none}.live.on{display:block;animation:rise .5s var(--ease)}
+.ring{position:relative;width:170px;height:170px;margin:4px auto 6px}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:10}
+.ring .bgc{stroke:var(--bg)}
+.ring .fg{stroke:url(#gr);stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.ring .mid{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.ring .mid b{display:block;font:700 34px/1 "Barlow Condensed";color:var(--navy)}
+.ring .mid span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.stat{background:var(--bg);border-radius:12px;padding:10px 6px;text-align:center}
+.stat b{display:block;font:700 24px/1 "Barlow Condensed";color:var(--navy)}
+.stat span{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;font-weight:600}
+.rec{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--red);background:#FDECEA;padding:5px 10px;border-radius:999px}
+.rec i{width:8px;height:8px;border-radius:50%;background:var(--red);animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(217,70,59,.5)}70%{box-shadow:0 0 0 9px rgba(217,70,59,0)}100%{box-shadow:0 0 0 0 rgba(217,70,59,0)}}
+.note{font-size:12px;color:var(--muted);background:#FFF7EE;border:1px solid #FBE2C6;border-radius:12px;padding:10px 12px;margin-top:12px;display:flex;gap:8px;line-height:1.45}
+.note svg{color:var(--orange);width:18px;height:18px;margin-top:1px}
+.toggle{display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:13px;font-weight:600}
+.sw{width:46px;height:28px;border-radius:999px;background:var(--line);position:relative;cursor:pointer;transition:background .35s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.2);transition:transform .35s var(--ease)}
+.sw.on{background:var(--green)}.sw.on::after{transform:translateX(18px)}
+
+/* history */
+.hist{list-style:none;margin:0;padding:0}
+.hist li{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+.hist li:last-child{border:0}
+.hist .hi{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none;background:var(--bg);color:var(--navy)}
+.hist .hi svg{width:16px;height:16px}
+.hist .t{font-size:13px;font-weight:600}
+.hist .s{font-size:12px;color:var(--muted);margin-top:2px}
+.hist .q{margin-left:auto;font-size:10.5px;font-weight:700;padding:3px 7px;border-radius:999px;white-space:nowrap}
+.q.up{background:#EAF6F0;color:var(--green)} .q.wait{background:#FFF2E4;color:#B8620F}
+.empty{color:var(--muted);font-size:13px;text-align:center;padding:14px}
+
+/* sheet / modal */
+.scrim{position:fixed;inset:0;background:rgba(22,35,59,.35);opacity:0;pointer-events:none;transition:opacity .4s;z-index:900}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;background:#fff;border-radius:22px 22px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom));z-index:901;transform:translateY(105%);transition:transform .5s var(--ease);box-shadow:var(--shadow-lg)}
+.sheet.on{transform:none}
+.grab{width:42px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 14px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,30px);opacity:0;background:var(--navy);color:#fff;padding:12px 16px;border-radius:14px;font-size:13.5px;font-weight:600;box-shadow:var(--shadow-lg);z-index:999;transition:all .45s var(--ease);display:flex;gap:8px;align-items:center;max-width:92vw}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast svg{color:var(--orange2)}
+footer{text-align:center;font-size:11px;color:var(--muted);padding:6px 0 10px}
+.leaflet-container{font-family:Inter}
+.vpin{width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:linear-gradient(140deg,var(--orange2),var(--orange));box-shadow:0 6px 14px rgba(242,140,40,.45);display:grid;place-items:center;border:3px solid #fff}
+.vpin i{width:10px;height:10px;border-radius:50%;background:#fff}
+.vpin.n{background:linear-gradient(140deg,var(--navy2),var(--navy));box-shadow:0 6px 14px rgba(31,58,104,.4)}
+.me{width:18px;height:18px;border-radius:50%;background:#2F80ED;border:3px solid #fff;box-shadow:0 0 0 6px rgba(47,128,237,.25)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="gr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F7A54E"/><stop offset="1" stop-color="#F28C28"/></linearGradient></defs></svg>
+
+<div class="wrap">
+  <header>
+    <div class="logo" data-i="truck"></div>
+    <div class="brand">
+      <h1>SV <b>Tracker</b></h1>
+      <p>DPWH · Bureau of Equipment</p>
+    </div>
+    <div class="hdr-r">
+      <button class="iconbtn" id="btnSettings" aria-label="Settings" data-i="sliders"></button>
+    </div>
+  </header>
+
+  <div style="margin:-6px 0 12px"><span class="pill" id="conn"><span class="dot"></span><span id="connTxt">Demo</span></span></div>
+  <!-- 1. Vehicle -->
+  <section class="card">
+    <div class="ch"><div class="tile n" data-i="truck"></div><div><h2>Service Vehicle</h2><small>Search by property no., DPWH code or plate</small></div></div>
+    <div class="search"><span data-i="search"></span><input id="q" placeholder="e.g. SV-2018-0001 or DPWH-BOE-SV-00101" autocomplete="off"></div>
+    <div class="list" id="list"></div>
+    <div class="vh" id="vh"></div>
+  </section>
+
+  <!-- 2. Map -->
+  <section class="card">
+    <div class="ch"><div class="tile o" data-i="pin"></div><div><h2>Location Map</h2><small id="mapSub">Last known position of the vehicle</small></div></div>
+    <div class="mapbox">
+      <div id="map"></div>
+      <div class="maptools">
+        <button id="btnLayer" aria-label="Map style" data-i="layers"></button>
+        <button id="btnMe" aria-label="My location" data-i="crosshair"></button>
+      </div>
+      <div class="maphint" id="hint">Tap the map to drop a pin. Drag it to fine-tune.</div>
+    </div>
+    <div class="coords">
+      <div><span>Latitude</span><b id="cLat">—</b></div>
+      <div><span>Longitude</span><b id="cLng">—</b></div>
+      <div><span>Accuracy</span><b id="cAcc">—</b></div>
+    </div>
+  </section>
+
+  <!-- 3. Actions -->
+  <section class="card">
+    <div class="seg" id="seg">
+      <div class="glider" id="glider"></div>
+      <button class="on" data-p="one"><span data-i="pin"></span>One-time update</button>
+      <button data-p="trip"><span data-i="route"></span>Track trip</button>
+    </div>
+
+    <div class="pane on" id="p-one">
+      <div class="two">
+        <div class="opt" id="optGps"><div class="tile n" data-i="nav"></div>Use device location</div>
+        <div class="opt" id="optMap"><div class="tile o" data-i="pin"></div>Pick on map</div>
+      </div>
+      <label class="f">Remarks (optional)</label>
+      <input class="in" id="remarks" placeholder="e.g. Parked at district office">
+      <button class="btn n" id="btnSave" disabled><span data-i="check"></span>Save location</button>
+    </div>
+
+    <div class="pane" id="p-trip">
+      <div id="tripSetup">
+        <label class="f">Driver</label>
+        <input class="in" id="tDriver" placeholder="Name of driver">
+        <label class="f">Purpose of travel</label>
+        <input class="in" id="tPurpose" placeholder="e.g. Site inspection – Angeles City">
+        <div class="note"><span data-i="clock"></span><div>Once started, the app records the vehicle's location <b>every 5 minutes</b> until you tap Stop. Keep this page open during the trip.</div></div>
+        <button class="btn o" id="btnStart" disabled><span data-i="play"></span>Start trip</button>
+      </div>
+      <div class="live" id="tripLive">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span class="rec"><i></i>RECORDING</span>
+          <span id="tripId" style="font-size:11.5px;color:var(--muted);font-weight:600"></span>
+        </div>
+        <div class="ring">
+          <svg viewBox="0 0 120 120"><circle class="bgc" cx="60" cy="60" r="52"/><circle class="fg" id="ringFg" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="0"/></svg>
+          <div class="mid"><div><b id="nextIn">5:00</b><span>Next record</span></div></div>
+        </div>
+        <div class="stats">
+          <div class="stat"><b id="sTime">0:00</b><span>Elapsed</span></div>
+          <div class="stat"><b id="sPts">0</b><span>Points</span></div>
+          <div class="stat"><b id="sKm">0.0</b><span>Km</span></div>
+        </div>
+        <div class="toggle"><span>Keep screen on</span><div class="sw" id="swWake"></div></div>
+        <div class="note"><span data-i="clock"></span><div>Phones pause web pages when the screen is off or another app is open. If that happens, the app records a point right away when you come back.</div></div>
+        <button class="btn g" id="btnNow"><span data-i="pin"></span>Record a point now</button>
+        <button class="btn r" id="btnStop"><span data-i="stop"></span>Stop trip</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. History -->
+  <section class="card">
+    <div class="ch"><div class="tile n" data-i="history"></div><div><h2>Recent Records</h2><small id="histSub">Select a vehicle to see its records</small></div>
+      <button class="iconbtn" id="btnSync" style="margin-left:auto;width:36px;height:36px" aria-label="Sync" data-i="refresh"></button></div>
+    <ul class="hist" id="hist"><li class="empty">No vehicle selected.</li></ul>
+  </section>
+
+  <footer>SV Tracker · Records go to the "svtracker" Google Sheet</footer>
+</div>
+
+<!-- settings sheet -->
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet">
+  <div class="grab"></div>
+  <div class="ch"><div class="tile n" data-i="sliders"></div><div><h2>Settings</h2><small>Connect the app to the Google Sheet</small></div></div>
+  <label class="f">Your name (recorded by)</label>
+  <input class="in" id="sName" placeholder="e.g. Engr. Juan Dela Cruz">
+  <label class="f">Apps Script Web App URL</label>
+  <input class="in" id="sUrl" placeholder="https://script.google.com/macros/s/…/exec">
+  <div class="note"><span data-i="cloud"></span><div>Leave blank to use <b>demo mode</b> (sample vehicles; records stay on this phone). Once a URL is saved, waiting records upload automatically.</div></div>
+  <button class="btn n" id="btnSaveSet"><span data-i="check"></span>Save &amp; test connection</button>
+</div>
+<div class="toast" id="toast"><span data-i="check"></span><span id="toastTxt"></span></div>
+
+<script>
+/* ===== CONFIG ===== */
+const DEFAULT_API = '';            // paste the Apps Script /exec URL here to hard-wire it
+const INTERVAL_MIN = 5;            // trip recording interval
+const DEMO = [{"prop": "SV-2018-0001", "code": "DPWH-BOE-SV-00101", "plate": "SAA 1200", "type": "Pick-up", "model": "Toyota Hilux 2.4 4x4", "year": 2018, "office": "BOE Central Office", "driver": "Juan Dela Cruz", "status": "Active", "last": {"ts": "2026-11-14T10:40:00", "lat": 14.676, "lng": 121.0437, "mode": "Trip • End"}}, {"prop": "SV-2019-0002", "code": "DPWH-BOE-SV-00102", "plate": "SBD 1237", "type": "Pick-up", "model": "Mitsubishi Strada GLS", "year": 2019, "office": "NCR – Metro Manila 1st DEO", "driver": "Pedro Santos", "status": "Active", "last": {"ts": "2026-11-14T07:43:00", "lat": 14.612119, "lng": 120.980449, "mode": "One-time • Map pin"}}, {"prop": "SV-2020-0003", "code": "DPWH-BOE-SV-00103", "plate": "SCG 1274", "type": "Pick-up", "model": "Nissan Navara VL", "year": 2020, "office": "Region III – Pampanga 1st DEO", "driver": "Mark Reyes", "status": "Active", "last": {"ts": "2026-11-14T11:35:00", "lat": 15.145, "lng": 120.5887, "mode": "Trip • End"}}, {"prop": "SV-2021-0004", "code": "DPWH-BOE-SV-00104", "plate": "SDJ 1311", "type": "Pick-up", "model": "Isuzu D-Max LS", "year": 2021, "office": "Region IV-A – Batangas 2nd DEO", "driver": "Ramon Garcia", "status": "Active", "last": {"ts": "2026-11-14T12:30:00", "lat": 13.922, "lng": 120.99, "mode": "Trip • End"}}, {"prop": "SV-2022-0005", "code": "DPWH-BOE-SV-00105", "plate": "SEM 1348", "type": "Pick-up", "model": "Ford Ranger XLT", "year": 2022, "office": "Region I – La Union DEO", "driver": "Allan Mendoza", "status": "Active", "last": {"ts": "2026-11-14T08:22:00", "lat": 16.60665, "lng": 120.319573, "mode": "One-time • GPS"}}, {"prop": "SV-2023-0006", "code": "DPWH-BOE-SV-00106", "plate": "SAP 1385", "type": "SUV", "model": "Toyota Fortuner G", "year": 2023, "office": "Region II – Isabela 1st DEO", "driver": "Jose Bautista", "status": "Active", "last": {"ts": "2026-11-14T08:35:00", "lat": 16.931897, "lng": 121.761814, "mode": "One-time • Map pin"}}, {"prop": "SV-2024-0007", "code": "DPWH-BOE-SV-00107", "plate": "SBS 1422", "type": "MPV", "model": "Toyota Innova E", "year": 2024, "office": "Region V – Albay 2nd DEO", "driver": "Rogelio Cruz", "status": "Active", "last": {"ts": "2026-11-14T08:48:00", "lat": 13.13759, "lng": 123.750337, "mode": "One-time • GPS"}}, {"prop": "SV-2018-0008", "code": "DPWH-BOE-SV-00108", "plate": "SCV 1459", "type": "Van", "model": "Toyota Hiace Commuter", "year": 2018, "office": "BOE Central Office", "driver": "Danilo Villanueva", "status": "Active", "last": {"ts": "2026-11-14T09:01:00", "lat": 14.579376, "lng": 120.964565, "mode": "One-time • Map pin"}}, {"prop": "SV-2019-0009", "code": "DPWH-BOE-SV-00109", "plate": "SDY 1496", "type": "Van", "model": "Nissan Urvan NV350", "year": 2019, "office": "NCR – Metro Manila 1st DEO", "driver": "Arnel Ramos", "status": "Active", "last": {"ts": "2026-11-14T09:14:00", "lat": 14.611649, "lng": 120.997954, "mode": "One-time • GPS"}}, {"prop": "SV-2020-0010", "code": "DPWH-BOE-SV-00110", "plate": "SEB 1533", "type": "Light Truck", "model": "Mitsubishi L300 FB", "year": 2020, "office": "Region III – Pampanga 1st DEO", "driver": "Edgar Flores", "status": "Active", "last": {"ts": "2026-11-14T09:27:00", "lat": 15.035142, "lng": 120.682134, "mode": "One-time • Map pin"}}, {"prop": "SV-2021-0011", "code": "DPWH-BOE-SV-00111", "plate": "SAE 1570", "type": "Light Truck", "model": "Isuzu Traviz", "year": 2021, "office": "Region IV-A – Batangas 2nd DEO", "driver": "Noel Aquino", "status": "Active", "last": {"ts": "2026-11-14T09:40:00", "lat": 13.890925, "lng": 120.908632, "mode": "One-time • GPS"}}, {"prop": "SV-2022-0012", "code": "DPWH-BOE-SV-00112", "plate": "SBH 1607", "type": "SUV", "model": "Mitsubishi Montero Sport GLX", "year": 2022, "office": "Region I – La Union DEO", "driver": "Ricardo Torres", "status": "Under Repair", "last": {"ts": "2026-11-14T09:53:00", "lat": 16.623069, "lng": 120.316692, "mode": "One-time • Map pin"}}, {"prop": "SV-2023-0013", "code": "DPWH-BOE-SV-00113", "plate": "SCK 1644", "type": "Pick-up", "model": "Toyota Hilux 2.4 4x4", "year": 2023, "office": "Region II – Isabela 1st DEO", "driver": "Ferdinand Castillo", "status": "Standby", "last": {"ts": "2026-11-14T10:06:00", "lat": 16.933385, "lng": 121.762356, "mode": "One-time • GPS"}}, {"prop": "SV-2024-0014", "code": "DPWH-BOE-SV-00114", "plate": "SDN 1681", "type": "Pick-up", "model": "Mitsubishi Strada GLS", "year": 2024, "office": "Region V – Albay 2nd DEO", "driver": "Romeo Navarro", "status": "Active", "last": {"ts": "2026-11-14T10:19:00", "lat": 13.13527, "lng": 123.750123, "mode": "One-time • Map pin"}}, {"prop": "SV-2018-0015", "code": "DPWH-BOE-SV-00115", "plate": "SEQ 1718", "type": "Pick-up", "model": "Nissan Navara VL", "year": 2018, "office": "BOE Central Office", "driver": "Jerome Lim", "status": "For Disposal", "last": {"ts": "2026-11-14T10:32:00", "lat": 14.580515, "lng": 120.971732, "mode": "One-time • GPS"}}];
+
+/* ===== icons ===== */
+const IC={
+ truck:'<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+ pin:'<path d="M20 10c0 5-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 15 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+ crosshair:'<circle cx="12" cy="12" r="10"/><path d="M22 12h-4M6 12H2M12 6V2M12 22v-4"/>',
+ nav:'<polygon points="3 11 22 2 13 21 11 13 3 11"/>',
+ play:'<polygon points="6 3 20 12 6 21 6 3"/>',
+ stop:'<rect width="14" height="14" x="5" y="5" rx="2"/>',
+ clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+ route:'<circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/>',
+ search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+ sliders:'<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/>',
+ cloud:'<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+ check:'<path d="M20 6 9 17l-5-5"/>',
+ history:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+ layers:'<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/>',
+ refresh:'<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>'
+};
+const svg=n=>`<svg class="i" viewBox="0 0 24 24">${IC[n]||''}</svg>`;
+document.querySelectorAll('[data-i]').forEach(el=>el.insertAdjacentHTML('afterbegin',svg(el.dataset.i)));
+
+/* ===== helpers ===== */
+const $=s=>document.querySelector(s);
+const store={get:(k,d)=>{try{const v=localStorage.getItem('svt_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+             set:(k,v)=>{try{localStorage.setItem('svt_'+k,JSON.stringify(v))}catch(e){}}};
+const api=()=>store.get('api',DEFAULT_API)||'';
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const pad=n=>String(n).padStart(2,'0');
+const isoLocal=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+const fmtTime=s=>{const d=new Date(s);return isNaN(d)?s:d.toLocaleString('en-PH',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})};
+const km=(a,b)=>{const R=6371,t=Math.PI/180,dl=(b[0]-a[0])*t,dn=(b[1]-a[1])*t;const x=Math.sin(dl/2)**2+Math.cos(a[0]*t)*Math.cos(b[0]*t)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))};
+const device=()=>{const u=navigator.userAgent;const os=/iPhone|iPad/.test(u)?'iPhone':/Android/.test(u)?'Android':/Mac/.test(u)?'Mac':/Windows/.test(u)?'Windows':'Device';const b=/CriOS|Chrome/.test(u)?'Chrome':/Safari/.test(u)?'Safari':/Firefox/.test(u)?'Firefox':'Browser';return os+' • '+b};
+let toastT;function toast(t){$('#toastTxt').textContent=t;$('#toast').classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>$('#toast').classList.remove('on'),2600)}
+
+/* ===== state ===== */
+let equipment=DEMO, sel=null, pick=null, mode=null;
+let queue=store.get('queue',[]);        // records waiting to upload
+let localLog=store.get('local',[]);      // records saved on this phone (for history)
+let trip=store.get('trip',null);
+
+/* ===== connection ===== */
+function setConn(state,txt){const p=$('#conn');p.className='pill '+(state||'');$('#connTxt').textContent=txt}
+function refreshConn(){
+  const q=queue.length;
+  if(!api()) setConn('', q?`Demo · ${q} saved`:'Demo');
+  else if(!navigator.onLine) setConn('off', `Offline · ${q} waiting`);
+  else setConn(q?'':'ok', q?`${q} uploading`:'Connected');
+}
+async function loadEquipment(){
+  if(!api()){equipment=DEMO;return}
+  try{const r=await fetch(api()+'?action=equipment');const j=await r.json();if(j.ok){equipment=j.equipment;store.set('eqCache',equipment)}}
+  catch(e){equipment=store.get('eqCache',DEMO)}
+}
+let flushing=false;
+async function flush(){
+  if(flushing||!api()||!queue.length||!navigator.onLine){refreshConn();return}
+  flushing=true;refreshConn();
+  try{
+    const batch=queue.slice(0,40);
+    const r=await fetch(api(),{method:'POST',body:JSON.stringify({action:'log',records:batch})});
+    const j=await r.json();
+    if(j.ok){const done=new Set(j.saved);queue=queue.filter(x=>!done.has(x.clientId));store.set('queue',queue);
+      localLog.forEach(x=>{if(done.has(x.clientId))x.up=true});store.set('local',localLog);
+      renderHist(); if(queue.length) setTimeout(flush,400)}
+  }catch(e){}
+  flushing=false;refreshConn();
+}
+window.addEventListener('online',flush);window.addEventListener('offline',refreshConn);
+setInterval(flush,60000);
+
+/* ===== vehicle search ===== */
+function statusCls(s){return /repair/i.test(s)?'w':/dispos/i.test(s)?'r':/standby/i.test(s)?'w':''}
+function renderList(){
+  const q=$('#q').value.trim().toLowerCase();
+  const res=equipment.filter(e=>!q||[e.prop,e.code,e.plate,e.model,e.office,e.driver].join(' ').toLowerCase().includes(q)).slice(0,30);
+  $('#list').innerHTML=res.length?res.map(e=>`<div class="item" data-p="${e.prop}"><div class="tile n" style="width:30px;height:30px">${svg('truck')}</div>
+    <div><div class="tag">${e.prop}</div><div class="sub">${e.code} · ${e.plate} · ${e.model}</div></div><span class="st ${statusCls(e.status)}">${e.status||''}</span></div>`).join('')
+    :'<div class="empty">No matching vehicle.</div>';
+  $('#list').classList.add('open');
+}
+$('#q').addEventListener('focus',renderList);$('#q').addEventListener('input',renderList);
+$('#list').addEventListener('click',e=>{const it=e.target.closest('.item');if(it)selectVehicle(it.dataset.p)});
+function selectVehicle(prop){
+  sel=equipment.find(e=>e.prop===prop);if(!sel)return;
+  store.set('sel',prop);
+  $('#list').classList.remove('open');$('#q').value='';$('#q').blur();
+  const l=lastKnown();
+  $('#vh').innerHTML=`<button class="chg" id="chg">Change</button>
+    <div class="big">${sel.prop}</div><div class="code">${sel.code}</div>
+    <div class="grid"><div><span>Plate no.</span>${sel.plate}</div><div><span>Type</span>${sel.type} · ${sel.year||''}</div>
+    <div><span>Make / model</span>${sel.model}</div><div><span>Custodian</span>${sel.driver||'—'}</div>
+    <div style="grid-column:1/-1"><span>Assigned office</span>${sel.office}</div></div>
+    <div class="last">${svg('pin')}${l?`Last seen ${fmtTime(l.ts)} · ${l.mode||''}`:'No location record yet'}</div>`;
+  $('#vh').classList.add('show');
+  $('#chg').onclick=()=>{$('#q').focus()};
+  if(!$('#tDriver').value) $('#tDriver').value=sel.driver||'';
+  showLast(); updateButtons(); loadHistory();
+}
+function lastKnown(){
+  const mine=localLog.filter(x=>x.prop===sel.prop).sort((a,b)=>b.ts.localeCompare(a.ts))[0];
+  const srv=sel.last&&sel.last.lat?sel.last:null;
+  if(mine&&(!srv||mine.ts>srv.ts))return mine;return srv;
+}
+
+/* ===== map ===== */
+const MAP_OK=typeof window.L!=='undefined';
+if(!MAP_OK){ // map library failed to load (no signal) — keep the app working without the map
+  const noop=new Proxy(function(){},{get:(t,k)=>k==='getZoom'?()=>15:k==='getLatLng'?()=>({lat:0,lng:0}):noop,apply:()=>noop});
+  window.L=noop;
+  document.getElementById('map').innerHTML='<div class="empty" style="padding-top:120px">Map could not load (weak or no internet).<br>Device location still works.</div>';
+}
+const map=L.map('map',{zoomControl:false,attributionControl:true}).setView([12.88,121.77],5);
+const tiles={
+  street:L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:20,attribution:'© OpenStreetMap © CARTO'}),
+  sat:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Imagery © Esri'})
+};
+let layer='street';tiles.street.addTo(map);
+$('#btnLayer').onclick=()=>{map.removeLayer(tiles[layer]);layer=layer==='street'?'sat':'street';tiles[layer].addTo(map)};
+const pinIcon=(c='')=>L.divIcon({className:'',html:`<div class="vpin ${c}"><i></i></div>`,iconSize:[34,34],iconAnchor:[17,34]});
+let lastMk=null,pickMk=null,meMk=null,accCircle=null,tripLine=null;
+function showLast(){
+  if(lastMk){map.removeLayer(lastMk);lastMk=null}
+  const l=sel&&lastKnown();
+  if(l&&l.lat){lastMk=L.marker([+l.lat,+l.lng],{icon:pinIcon('n')}).addTo(map).bindPopup(`<b>${sel.prop}</b><br>${fmtTime(l.ts)}`);
+    if(!trip) map.flyTo([+l.lat,+l.lng],15,{duration:1.2});$('#mapSub').textContent='Navy pin = last known position'}
+}
+function setCoords(lat,lng,acc){$('#cLat').textContent=lat!=null?(+lat).toFixed(5):'—';$('#cLng').textContent=lng!=null?(+lng).toFixed(5):'—';$('#cAcc').textContent=acc!=null&&acc!==''?Math.round(acc)+' m':'—'}
+function setPick(lat,lng,acc,source){
+  pick={lat,lng,acc,source};setCoords(lat,lng,acc);
+  if(!pickMk){pickMk=L.marker([lat,lng],{icon:pinIcon(),draggable:true}).addTo(map);
+    pickMk.on('dragend',()=>{const p=pickMk.getLatLng();pick={lat:p.lat,lng:p.lng,acc:null,source:'Map'};mode='map';setOpt();setCoords(p.lat,p.lng,null);if(accCircle){map.removeLayer(accCircle);accCircle=null}})}
+  else pickMk.setLatLng([lat,lng]);
+  if(accCircle){map.removeLayer(accCircle);accCircle=null}
+  if(acc) accCircle=L.circle([lat,lng],{radius:acc,color:'#2C5191',weight:1,fillOpacity:.08}).addTo(map);
+  updateButtons();
+}
+map.on('click',e=>{if(mode!=='map'||trip)return;setPick(e.latlng.lat,e.latlng.lng,null,'Map');$('#hint').classList.remove('show')});
+
+function getFix(){return new Promise((res,rej)=>{
+  if(!navigator.geolocation)return rej(new Error('This device has no location service.'));
+  navigator.geolocation.getCurrentPosition(p=>res(p),e=>rej(e),{enableHighAccuracy:true,timeout:20000,maximumAge:15000});
+})}
+function geoErr(e){return e&&e.code===1?'Location permission was blocked. Allow location for this site in your browser settings.':'Could not get your location. Move to an open area and try again.'}
+function showMe(p){const ll=[p.coords.latitude,p.coords.longitude];
+  if(!meMk)meMk=L.marker(ll,{icon:L.divIcon({className:'',html:'<div class="me"></div>',iconSize:[18,18],iconAnchor:[9,9]})}).addTo(map);else meMk.setLatLng(ll)}
+$('#btnMe').onclick=async()=>{try{const p=await getFix();showMe(p);map.flyTo([p.coords.latitude,p.coords.longitude],16,{duration:1})}catch(e){toast(geoErr(e))}};
+
+/* ===== one-time update ===== */
+function setOpt(){$('#optGps').classList.toggle('on',mode==='gps');$('#optMap').classList.toggle('on',mode==='map')}
+$('#optGps').onclick=async()=>{
+  mode='gps';setOpt();$('#hint').classList.remove('show');toast('Getting your location…');
+  try{const p=await getFix();showMe(p);setPick(p.coords.latitude,p.coords.longitude,p.coords.accuracy,'GPS');
+    map.flyTo([p.coords.latitude,p.coords.longitude],17,{duration:1.1});toast('Location found')}
+  catch(e){toast(geoErr(e))}
+};
+$('#optMap').onclick=()=>{mode='map';setOpt();$('#hint').classList.add('show');
+  $('#map').scrollIntoView({behavior:'smooth',block:'center'});
+  if(pick){pick.source='Map';pick.acc=null}};
+function updateButtons(){$('#btnSave').disabled=!(sel&&pick);$('#btnStart').disabled=!sel||!!trip}
+
+function makeRecord(lat,lng,acc,speed,source,modeTxt,extra={}){
+  const name=store.get('name','');
+  return Object.assign({clientId:uid(),ts:isoLocal(new Date()),prop:sel.prop,code:sel.code,plate:sel.plate,type:sel.type,office:sel.office,
+    mode:modeTxt,tripId:'',lat:+(+lat).toFixed(6),lng:+(+lng).toFixed(6),acc:acc==null?'':Math.round(acc),speed:speed==null?'':speed,
+    source,remarks:'',by:name,device:device(),up:false},extra);
+}
+function commit(rec){
+  queue.push(rec);store.set('queue',queue);
+  localLog.unshift(rec);localLog=localLog.slice(0,500);store.set('local',localLog);
+  renderHist();flush();
+}
+$('#btnSave').onclick=()=>{
+  if(!sel||!pick)return;
+  const rec=makeRecord(pick.lat,pick.lng,pick.acc,pick.source==='GPS'?0:'',pick.source,pick.source==='GPS'?'One-time • GPS':'One-time • Map pin',{remarks:$('#remarks').value.trim()});
+  commit(rec);sel.last={ts:rec.ts,lat:rec.lat,lng:rec.lng,mode:rec.mode};
+  toast(api()?'Location saved to the sheet':'Saved on this phone (demo mode)');
+  $('#remarks').value='';if(pickMk){map.removeLayer(pickMk);pickMk=null}if(accCircle){map.removeLayer(accCircle);accCircle=null}
+  pick=null;mode=null;setOpt();setCoords();updateButtons();selectVehicle(sel.prop);
+};
+
+/* ===== tabs ===== */
+document.querySelectorAll('#seg button').forEach((b,i)=>b.onclick=()=>{
+  document.querySelectorAll('#seg button').forEach(x=>x.classList.toggle('on',x===b));
+  $('#glider').style.transform=`translateX(${i*100}%)`;
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==='p-'+b.dataset.p));
+  $('#hint').classList.remove('show');
+});
+
+/* ===== trip tracking ===== */
+let tickT=null,watchId=null,lastFix=null,wakeLock=null,uiT=null;
+const MS=INTERVAL_MIN*60000;
+function saveTrip(){store.set('trip',trip)}
+async function recordTripPoint(kind,note=''){
+  let p=null;
+  if(lastFix&&Date.now()-lastFix.timestamp<45000)p=lastFix;
+  else{try{p=await getFix()}catch(e){toast(geoErr(e));return}}
+  const ll=[p.coords.latitude,p.coords.longitude];
+  const prev=trip.path.length?trip.path[trip.path.length-1]:null;
+  let speed=p.coords.speed!=null?p.coords.speed*3.6:null;
+  if(speed==null&&prev){const hrs=(Date.now()-prev[2])/3600000;speed=hrs>0?km(prev,ll)/hrs:null}
+  if(prev)trip.km+=km(prev,ll);
+  trip.path.push([ll[0],ll[1],Date.now()]);trip.pts++;trip.lastRec=Date.now();saveTrip();
+  const label=kind==='start'?'Trip • Start':kind==='end'?'Trip • End':kind==='manual'?'Trip • Manual':'Trip • Auto (5 min)';
+  const rec=makeRecord(ll[0],ll[1],p.coords.accuracy,speed!=null?Math.round(speed*10)/10:'','GPS',label,
+    {tripId:trip.id,driver:trip.driver,purpose:trip.purpose,remarks:kind==='start'?trip.purpose:note});
+  commit(rec);drawTrip();renderLive();
+  sel.last={ts:rec.ts,lat:rec.lat,lng:rec.lng,mode:rec.mode};
+  const ln=document.querySelector('#vh .last');if(ln)ln.innerHTML=svg('pin')+`Last seen ${fmtTime(rec.ts)} · ${rec.mode}`;
+}
+function drawTrip(){
+  if(!trip){if(tripLine){map.removeLayer(tripLine);tripLine=null}return}
+  const ll=trip.path.map(p=>[p[0],p[1]]);
+  if(!tripLine)tripLine=L.polyline(ll,{color:'#F28C28',weight:5,opacity:.9,lineCap:'round'}).addTo(map);else tripLine.setLatLngs(ll);
+  if(ll.length){map.flyTo(ll[ll.length-1],Math.max(map.getZoom(),15),{duration:1});if(lastMk)lastMk.setLatLng(ll[ll.length-1])}
+}
+function renderLive(){
+  if(!trip)return;
+  const now=Date.now(),el=Math.floor((now-trip.start)/1000);
+  const h=Math.floor(el/3600),m=Math.floor(el%3600/60),s=el%60;
+  $('#sTime').textContent=h?`${h}:${pad(m)}`:`${m}:${pad(s)}`;
+  $('#sPts').textContent=trip.pts;$('#sKm').textContent=trip.km.toFixed(1);
+  const left=Math.max(0,(trip.lastRec+MS)-now);
+  $('#nextIn').textContent=`${Math.floor(left/60000)}:${pad(Math.floor(left%60000/1000))}`;
+  $('#ringFg').style.strokeDashoffset=326.7*(1-left/MS);
+}
+function scheduleTick(){
+  clearTimeout(tickT);
+  const wait=Math.max(1000,trip.lastRec+MS-Date.now());
+  tickT=setTimeout(async()=>{if(!trip)return;await recordTripPoint('auto');scheduleTick()},wait);
+}
+function startWatch(){
+  if(navigator.geolocation&&watchId==null)
+    watchId=navigator.geolocation.watchPosition(p=>{lastFix=p;showMe(p);setCoords(p.coords.latitude,p.coords.longitude,p.coords.accuracy)},()=>{},{enableHighAccuracy:true,maximumAge:10000});
+}
+function stopWatch(){if(watchId!=null){navigator.geolocation.clearWatch(watchId);watchId=null}}
+function showTripUI(on){
+  $('#tripSetup').style.display=on?'none':'';$('#tripLive').classList.toggle('on',on);
+  if(on){$('#tripId').textContent=trip.id;clearInterval(uiT);uiT=setInterval(renderLive,1000);renderLive()}
+  else clearInterval(uiT);
+  updateButtons();
+}
+$('#btnStart').onclick=async()=>{
+  if(!sel)return;
+  const d=new Date();
+  trip={id:`TRIP-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}-${sel.prop.slice(-4)}`,
+    prop:sel.prop,driver:$('#tDriver').value.trim(),purpose:$('#tPurpose').value.trim(),start:Date.now(),lastRec:Date.now(),pts:0,km:0,path:[]};
+  saveTrip();showTripUI(true);startWatch();toast('Trip started · getting first fix…');
+  await recordTripPoint('start');scheduleTick();
+  if($('#swWake').classList.contains('on'))wake(true);
+};
+$('#btnNow').onclick=async()=>{await recordTripPoint('manual','Manual point');scheduleTick();toast('Point recorded')};
+$('#btnStop').onclick=async()=>{
+  if(!trip)return;
+  await recordTripPoint('end');
+  const sum=`Trip ended · ${trip.pts} points · ${trip.km.toFixed(1)} km`;
+  clearTimeout(tickT);stopWatch();wake(false);
+  trip=null;saveTrip();showTripUI(false);$('#tPurpose').value='';
+  setTimeout(()=>{if(tripLine){map.removeLayer(tripLine);tripLine=null}},6000);
+  toast(sum);selectVehicle(sel.prop);
+};
+// catch up when the phone wakes the page again
+document.addEventListener('visibilitychange',async()=>{
+  if(document.visibilityState!=='visible')return;
+  if(trip&&Date.now()-trip.lastRec>=MS){await recordTripPoint('auto','Recorded on return (page was paused)');scheduleTick()}
+  if(trip&&$('#swWake').classList.contains('on'))wake(true);
+  flush();
+});
+async function wake(on){
+  try{
+    if(on&&'wakeLock' in navigator){wakeLock=await navigator.wakeLock.request('screen')}
+    else if(!on&&wakeLock){await wakeLock.release();wakeLock=null}
+  }catch(e){}
+}
+$('#swWake').onclick=()=>{const on=!$('#swWake').classList.contains('on');$('#swWake').classList.toggle('on',on);store.set('wake',on);
+  if(!('wakeLock' in navigator)&&on)toast('This browser cannot keep the screen on — set auto-lock to Never during trips');
+  if(trip)wake(on)};
+
+/* ===== history ===== */
+let srvHist=[];
+async function loadHistory(){
+  srvHist=[];renderHist();
+  if(!sel||!api())return;
+  try{const r=await fetch(`${api()}?action=history&prop=${encodeURIComponent(sel.prop)}&limit=25`);const j=await r.json();if(j.ok){srvHist=j.history;renderHist()}}catch(e){}
+}
+function renderHist(){
+  if(!sel){return}
+  const mine=localLog.filter(x=>x.prop===sel.prop);
+  const seen=new Set(mine.map(x=>x.ts+x.lat));
+  const all=[...mine.map(x=>({...x,local:true})),...srvHist.filter(x=>!seen.has(x.ts+x.lat)).map(x=>({...x,up:true}))]
+    .sort((a,b)=>String(b.ts).localeCompare(String(a.ts))).slice(0,25);
+  $('#histSub').textContent=`${sel.prop} · ${all.length} record${all.length===1?'':'s'}`;
+  $('#hist').innerHTML=all.length?all.map(x=>`<li><div class="hi">${svg(/Trip/.test(x.mode)?'route':/Map/.test(x.mode)?'pin':'nav')}</div>
+    <div><div class="t">${x.mode||'Location'}</div><div class="s">${fmtTime(x.ts)} · ${(+x.lat).toFixed(4)}, ${(+x.lng).toFixed(4)}${x.remarks?' · '+x.remarks:''}</div></div>
+    <span class="q ${x.up?'up':'wait'}">${x.up?'In sheet':(api()?'Waiting':'On phone')}</span></li>`).join('')
+    :'<li class="empty">No records yet for this vehicle.</li>';
+}
+$('#btnSync').onclick=async()=>{await flush();await loadEquipment();if(sel)selectVehicle(sel.prop);toast(api()?'Synced with the sheet':'Demo mode — add the script URL in Settings')};
+
+/* ===== settings ===== */
+function openSheet(on){$('#sheet').classList.toggle('on',on);$('#scrim').classList.toggle('on',on)}
+$('#btnSettings').onclick=()=>{$('#sName').value=store.get('name','');$('#sUrl').value=store.get('api',DEFAULT_API)||'';openSheet(true)};
+$('#scrim').onclick=()=>openSheet(false);
+$('#btnSaveSet').onclick=async()=>{
+  store.set('name',$('#sName').value.trim());
+  const u=$('#sUrl').value.trim();store.set('api',u);
+  if(!u){openSheet(false);toast('Demo mode');refreshConn();return}
+  try{const r=await fetch(u+'?action=ping');const j=await r.json();
+    if(j.ok){toast('Connected to the sheet');openSheet(false);await loadEquipment();flush();if(sel)selectVehicle(sel.prop)}
+    else toast('Script answered with an error')}
+  catch(e){toast('Could not reach that URL — check deployment access is "Anyone"')}
+  refreshConn();
+};
+
+/* ===== boot ===== */
+(async()=>{
+  if(store.get('wake',false))$('#swWake').classList.add('on');
+  refreshConn();await loadEquipment();
+  const last=trip?trip.prop:store.get('sel',null);
+  if(last&&equipment.some(e=>e.prop===last))selectVehicle(last);
+  if(trip){
+    $('#seg button[data-p="trip"]').click();showTripUI(true);startWatch();drawTrip();
+    if(Date.now()-trip.lastRec>=MS)await recordTripPoint('auto','Recorded on return (page was paused)');
+    scheduleTick();if($('#swWake').classList.contains('on'))wake(true);
+  }
+  flush();
+})();
+</script>
+</body>
+</html>
